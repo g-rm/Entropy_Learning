@@ -29,7 +29,7 @@ def shuffle_data(arr, n_times):
 
 
 
-def bootstrap(rats_shuffled_samples, std='False'):
+def bootstrap(rats_shuffled_samples):
 
 	"""
 	Apllies change point analysis and group values above
@@ -39,26 +39,19 @@ def bootstrap(rats_shuffled_samples, std='False'):
 	-----------
 	rats_shuffled_samples : array-like
 		list of m-samples of shuffled/permuted data of n rats
-		(n < m).
+		(m > n).
 		ex.	[[[m1],[m2]],[m3]] when len(n) equals n-rats equals 2
-
-	std : array-like
-		if True returns standart deviation of samples
 
 	Returns:
 	--------
 	cp_odds : array-like
-		Group of change-point odds values above the standart deviation
-
-	std : array-like
-		standart deviation of all m-samples of n-rats
+		Group of change-point odds value
 	"""
 
 	arr = rats_shuffled_samples
 
 	n_rats = len(arr)
 	cp_odds = [[] for i in range(n_rats)]
-	std = [[] for i in range(n_rats)]		#
 
 	for i in range(n_rats):
 		n_samples = len(arr[i])
@@ -67,20 +60,13 @@ def bootstrap(rats_shuffled_samples, std='False'):
 			#Applies change point in all shuffled datas
 			aux = arr[i][j]
 			aux = reyes_cp(aux, 20)
-
-			#Gets only odds values above standart deviation
 			aux = aux.dropna().values
-			std[i].append(aux.std())		#
-			arr[i][j] = aux[aux >= aux.std()]
 
-			#Concatenates all change point odds of n samples in one array
-			cp_odds[i].extend(arr[i][j])
+			#Group max change point values of each sample
+			cp_odds[i].append(aux.max())
 
 		#Turns list to array
 		cp_odds[i] = np.asarray(cp_odds[i])
-
-	if std=='True':							#
-		return cp_odds, std
 
 	return cp_odds
 
@@ -142,43 +128,3 @@ def real_cp(cp_odds, dt, p=.95):
 				real_cp[i] = bin_edges[j+1]
 
 	return	real_cp, area_sum
-
-
-
-def bootstrap_v2(arr):
-
-	"""
-	Creates a histogram and validates change point values
-
-	Parameters:
-	-----------
-	arr : array-like
-		array or list of n-samples of shuffled/permuted
-		data to analysis
-
-	Returns:
-	--------
-	density : array_like
-	"""
-
-	#Applies change point in all shuffled datas
-	n_rats = len(arr)
-	std = [[None] * len(arr[0])] * n_rats
-
-	for i in range(n_rats):
-		n_samples = len(arr[i])
-		for j in range(n_samples):
-			arr[i][j] = reyes_cp(arr[i][j], 20)
-			aux = arr[i][j].dropna().values
-			std[i][j] = aux.std()
-			aux = aux[aux >= aux.std()]
-
-	"""
-	#Concatenates all change point odds of n samples in one array
-	cp_odds = [None] * n_rats
-	for i in range(len(arr)):
-		n_samples = len(arr[i])
-		cp_odds[i] = np.concatenate([arr[i][j] for j in range(n_samples)])
-	"""
-
-	return arr, std
