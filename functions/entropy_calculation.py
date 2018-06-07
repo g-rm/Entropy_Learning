@@ -1,4 +1,5 @@
 import numpy as np
+from functions.generate_pdf import generate_pdf
 
 def empirical_entropy(arr, range, dt):
     """

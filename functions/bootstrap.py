@@ -29,7 +29,7 @@ def shuffle_data(arr, n_times):
 
 
 
-def bootstrap(rats_shuffled_samples):
+def bootstrap(rat_shuffled_samples, reyes_window_size=20):
 
 	"""
 	Apllies change point analysis and group values above
@@ -37,10 +37,12 @@ def bootstrap(rats_shuffled_samples):
 
 	Parameters:
 	-----------
-	rats_shuffled_samples : array-like
-		list of m-samples of shuffled/permuted data of n rats
-		(m > n).
-		ex.	[[[m1],[m2]],[m3]] when len(n) equals n-rats equals 2
+	rat_shuffled_samples : array-like
+		list of n-samples of shuffled/permuted data of one rat
+		ex.	[[s1],[s2], ...[sn]]
+
+	full_window_size : int, optional, default: 20
+        Size of the total walking window (sum of two halfs)
 
 	Returns:
 	--------
@@ -48,30 +50,27 @@ def bootstrap(rats_shuffled_samples):
 		Group of change-point odds value
 	"""
 
-	arr = rats_shuffled_samples
+	arr = rat_shuffled_samples
 
-	n_rats = len(arr)
-	cp_odds = [[] for i in range(n_rats)]
+	cp_odds = []
+	n_samples = len(arr)
 
-	for i in range(n_rats):
-		n_samples = len(arr[i])
-		for j in range(n_samples):
+	for i in range(n_samples):
+		#Applies change point in all shuffled datas
+		aux = arr[i]
+		aux = reyes_cp(aux, reyes_window_size)
+		aux = aux.dropna().values
 
-			#Applies change point in all shuffled datas
-			aux = arr[i][j]
-			aux = reyes_cp(aux, 20)
-			aux = aux.dropna().values
+		#Group max change point value of each sample
+		cp_odds.append(aux.max())
 
-			#Group max change point values of each sample
-			cp_odds[i].append(aux.max())
-
-		#Turns list to array
-		cp_odds[i] = np.asarray(cp_odds[i])
+	#Turns list to array
+	cp_odds = np.asarray(cp_odds)
 
 	return cp_odds
 
 
-def real_cp(cp_odds, dt, p=.95):
+def real_cp(cp_odds, dt=.1, p=.95):
 	"""
 	Determines limiar for wich the change point will be real,
 	or valid.
@@ -79,7 +78,7 @@ def real_cp(cp_odds, dt, p=.95):
 	Parameters
 	----------
 	cp_odds : array-like
-		A list of n array with change-point data of n_rats
+		Array with change-points values of one rat
 
 	dt : float
 		Defines the number of equal-width bins in the given range
@@ -89,7 +88,6 @@ def real_cp(cp_odds, dt, p=.95):
 
 	Returns:
 	--------
-
 	real_cp : float
 		Infimum value for which the change point will be valid
 
@@ -98,33 +96,30 @@ def real_cp(cp_odds, dt, p=.95):
 		area
 	"""
 
-	arr = cp_odds
-	n_rats = len(arr)
-
+	#log prevents issues between short dt and high ranges
+	arr = np.log(cp_odds)
 	density_edges = [None] * 2
 
-	area_sum = [0] * n_rats
-	real_cp = [0] * n_rats
+	area_sum = np.zeros(1)
+	real_cp = np.zeros(1)
 
-	for i in range(n_rats):
+	#Some aliases
+	min = arr.min()
+	max = arr.max()
+	range_diff = max - min
 
-		#Some aliases
-		min = arr[i].min()
-		max = arr[i].max()
-		range_diff = max - min
+	density_edges = generate_pdf(arr, (min, max), dt)
 
-		density_edges = generate_pdf(arr[i], (min, max), dt)
+	#More aliases
+	density = density_edges[0]
+	bin_edges = density_edges[1]
 
-		#More aliases
-		density = density_edges[0]
-		bin_edges = density_edges[1]
+	bins = int(range_diff/dt) + 1
+	for j in range(bins):
+		if area_sum <= p:
+			#integrates area
+			area_sum += density[j] * dt
+			#greater bin edge
+			real_cp = bin_edges[j+1]
 
-		bins = int(range_diff/dt) + 1
-		for j in range(bins):
-			if area_sum[i] <= p:
-				#integrates area
-				area_sum[i] += density[j] * dt
-				#greater bin edge
-				real_cp[i] = bin_edges[j+1]
-
-	return	real_cp, area_sum
+	return	np.exp(real_cp), area_sum
