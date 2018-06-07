@@ -32,8 +32,8 @@ def shuffle_data(arr, n_times):
 def bootstrap(rat_shuffled_samples, reyes_window_size=20):
 
 	"""
-	Apllies change point analysis and group values above
-	standart deviation of a given shuffled/permuted samples of n-rats.
+	Apllies change-point analysis on a given shuffled/permuted
+	samples of one rat and group maximum cp values.
 
 	Parameters:
 	-----------
@@ -78,7 +78,7 @@ def real_cp(cp_odds, dt=.1, p=.95):
 	Parameters
 	----------
 	cp_odds : array-like
-		Array with change-points values of one rat
+		Array with change-point values of one rat
 
 	dt : float
 		Defines the number of equal-width bins in the given range
